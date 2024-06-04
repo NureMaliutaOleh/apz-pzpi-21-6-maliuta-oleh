@@ -1,0 +1,1636 @@
+1 ОПИС АРХІТЕКТУРИ СИСТЕМИ
+
+Серверна частина програмної системи «SmartInlet» була створена на платформі ASP.NET Core з використанням .NET 8 та написана на мові програмування С#.
+Серверна частина було розроблена за архітектурою Monolithic. Дана архітектура представляє собою підхід до розробки додатків, у якому вони розбиваються на невеликі, незалежні служби, які можуть опрацьовуватися, тестуватися і розгортатися незалежно один від одного і кожна з них має свою незалежну роль та функціонал.
+У серверній частині є головний простір імен SmartInlet.Server, який був поділений на інші простори імен, компоненти, яких відповідають за різні частини серверного застосунку: Controllers, Models, Services, Requests, Responses, Tools та Attributes.
+- SmartInlet.Server.Controllers зберігає в собі контролери, що являють собою обробники HTTP запитів від клієнтів та IoT пристроїв.
+- SmartInlet.Server.Requests зберігає класи для зберігання даних з HTTP запитів.
+- SmartInlet.Server.Responses зберігає класи, які представляють собою тіла для відправки відповідей до HTTP запитів.
+- SmartInlet.Server.Models зберігає моделі таблиць та міграції для бази даних для взаємодії з Entity Framework Core.
+- SmartInlet.Server.Services зберігає інструменти для взаємодії із зовнішніми сервісами, такими як база даних та електронна пошта.
+- SmartInlet.Server.Tools зберігає прості класи із функціями для вирішення простих задач, таких як хешування та перевірка паролів або генерація випадкових строк для створення коду доступу.
+- SmartInlet.Server.Attributes зберігає різні створені атрибути, наприклад ті, що призначені для перевірки прав користувача перед виконання функції обробки HTTP запитів.
+
+2 ПОБУДОВА ДІАГРАМИ РОЗГОРТАННЯ
+
+Також інформацію про компоненти та розгортання серверної частини можна побачити на UML діаграмі розгортання (див. рис. 2.1).
+Програмна система складається з трьох основних компонентів: серверна частина, клієнтська частина, мобільний застосунок та IoT прстрій.
+Серверна частина взаємодіє з СУБД Microsoft SQL Server за допомогою Entity Framework Core, який виконує роль ORM.
+Серверна частина використовує архітектуру Monolithic для зберігання її копонентів у виді мікро-служб.
+Клієнт через брузер або мобільний додаток відсилає HTTP запити, після чого очікують відповідь від сервера після того, як він здійснить усі необхідні операції.
+Також HTTP протокол використовується IoT пристроями. Датчики температури або частоти повітря через деякі проміжки часу надають свої дані через HTTP для оновлення показників в базі даних, та пристрій, який відповідає за контроль вікон, дверей, або вентиляції, теж через проміжки часу надає запити на зчитування даних від датчиків або ручного управління.
+
+3 ОПИС АРХІТЕКТУРИ СЕРВЕРНОЇ ЧАСТИНИ
+
+Серед технологій для розробки серверної частини було обрано мову програмування C# з використанням .NET 8 та технологію ASP.NET для створення RESTful API для взаємодії з клієнтами та IoT пристроями.
+Було використано додаткові пакети та бібліотеки для взаємодії з ASP.NET та Entity Framework Core.
+Для даної системи використовується база даних Microsoft SQL Server та в якості ORM було обрано Entity Framework Core так як дана СУБД і ORM найбільше підходять для реалізації клієнт-серверних систем, які використовують С# та ASP.NET. Також було включено підтримку міграцій для зберігання даних при зміні структури БД.
+Авторизація користувачів реалізована за допомогою згенерованих ключів, які зберігаються у Cookie файлах.
+Для забезпечення безпеки даних користувачів відбувається хешування паролів за допомогою стандарту PBKDF2, після чого отриманий хеш зберігається в базі даних.
+В проекті присутня підтримка кодувань UTF-8 та ASCII для забезпечення можливості зберігання та передачі даних на різних мовах та використання більшої кількості спеціальних символів.
+У серверній частині увесь час та дати використовуються та зберігаються за UTC стандартом. Це дає можливість отримання локального часу в залежності від часового поясу, що забезпечує інтернаціоналізацію.
+Присутня можливість адміністрування користувачів шляхом управління їхніми правами, відправлення електронних листів та видалення користувача, і адміністрування IoT пристрої, що включає отримання інформації про пристрої, управління доступом та можливість їх видалення.
+
+4 ПОБУДОВА ДІАГРАМИ ПРЕЦЕДЕНТІВ
+
+Було створено діаграму прецедентів (див. рис. 4.1), яка була базована на аналізі функціонала,  визначеному у документі «Vision & Scope». При розробці в даній системі було передбачено два типи користувачів: Користувач та Адміністратор.
+1. Користувач:
+- Реєстрація
+	- <extend> Авторизація
+- Авторизація
+- Редагування акаунту
+	- <extend> Авторизація
+- Видалення акаунту
+	- <include> Вихід з групи
+- Вихід з групи
+- Пердача ролі власника групи іншому користувачу
+	- <extend> Вихід з групи
+- Видалення групи
+	- <extend> Вихід з групи
+- Створення групи
+	- <extend> Авторизація
+- Редагування групи
+	- <include> Вихід з групи
+	- <include> Редагування учасників групи
+	- <include> Редагування списку пристроїв в групі
+	- <extend> Приєднатись до групи
+	- <extend> Створення групи
+- Редагування учасників групи
+	- <include> Додавання нових учасників до групи
+	- <include> Редагування прав учасників групи
+	- <include> Видалення учасників з групи
+- Редагування списку пристроїв в групі
+	- <include> Додавання нових пристроїв до групи
+	- <include> Редагування пристроїв (датчик або пристрій для управління)
+	- <include> Видалення пристроїв з групи
+- Редагування пристроя (датчик або пристрій для управління)
+	- <include> Перейменування пристрою (датчика)
+	- <include> Зміна типу управління пристроєм
+	- <include> Ручне управління пристроєм
+- Купівля пристрою
+- Перегляд списку користувачів
+- Перегляд списку груп
+2. Адміністратор:
+- Доступні ті ж самі функціїї, що і "Користувачеві"
+- Адміністрування користувачів
+	- <include> Відправлення електроного листа користувачеві
+	- <include> Редагування прав адміністрування користувача
+	- <include> Видалення акаунту користувача
+- Адміністрування пристроїв
+	- <include> Реєстрація пристроїв
+	- <include> Перегляд списку пристроїв
+- Перегляд списку пристроїв
+	- <include> Редагування пристроїв (датчик або пристрій для управління)
+	- <include> Видалення пристроїв
+
+5 ПОБУДОВА ER-ДІАГРАМИ
+
+Для демонстрації структури бази даних була спроектована ER-модель даних (див. рис. 5.1), яка демонструє всі сутності та їхні взаємозв'язки.
+User:
+- Id (int, PK)
+- Username (nvarchar(50))
+- FirstName (nvarchar(50))
+- LastName (nvarchar(50))
+- Email (nvarchar(500))
+- PasswordHash (nvarchar(max))
+- CanAdministrateDevices (bit)
+- CanAdministrateUsers (bit)
+- IsActivated (bit)
+- RegisteredAt (datetime)
+ActivationCode:
+- Id (int, PK)
+- UserId (int, FK)
+- Code (nvarchar(300))
+- Action (nvarchar(1000))
+- ExpiresAt (datetime)
+JoinOffer:
+- Id (int, PK)
+- UserId (int, FK)
+- GroupId (int, FK)
+- Text (nvarchar(1000))
+- SentByGroupe (bit)
+- SentAt (datetime)
+Group:
+- Id (int, PK)
+- OwnerId (int, FK)
+- Name (nvarchar(50))
+- JoinOffersFromUsersAllowed (bit)
+GroupMember:
+- Id (int, PK)
+- UserId (int, FK)
+- GroupId (int, FK)
+- CanEditMembers (bit)
+- CanEditDevices (bit)
+TempSensor:
+- Id (int, PK)
+- GroupId (int, FK)
+- InletDeviceId (int, FK)
+- Name (nvarchar(50))
+- AccessCode (nvarchar(max))
+- Kelvins (shortint)
+- KelvinLimitToOpen (shortint)
+- KelvinLimitToClose (shortint)
+- IsBlocked (bit)
+- UpdatedAt (datetime)
+AirSensor:
+- Id (int, PK)
+- GroupId (int, FK)
+- InletDeviceId (int, FK)
+- Name (nvarchar(50))
+- AccessCode (nvarchar(max))
+- Aqi (shortint)
+- AqiLimitToOpen (shortint)
+- AqiLimitToClose (shortint)
+- IsBlocked (bit)
+- UpdatedAt (datetime)
+InletDevice:
+- Id (int, PK)
+- GroupId (int, FK)
+- AirSensorId (int, FK)
+- TempSensorId (int, FK)
+- Name (nvarchar(50))
+- AccessCode (nvarchar(max))
+- ControlType (nvarchar(100))
+- IsOpened (bit)
+- IsBlocked (bit)
+- UpdatedAt (datetime)
+Зв'язки між таблицями:
+- Один користувач (User) може мати багато кодів (ActivationCode), які потрібні для активації або підтвердження дій користувача (наприклад, заміна електроної пошти).
+- Одна група (Groupe) завжди повинна мати одного користувача (User), в полі OwnerId, так як у групи завжди є власник з усіма правами учасника групи.
+- Також один користувач (User) та одна група (Groupe) можуть мати багато запрошень на приєднання до групи (JoinOffer).
+- Таблици GroupMember, по суті, реалізує зв'язок багато-до-багатьох між User та Groupe, бо GroupMember характеризує учасника групи та зберігає такі характеристики, як права учасника в групі (наприклад, редагування інших учасників або зареєстрованих пристроїв в групі) та користувач може бути учасником в декількох групах.
+- Одна група (Groupe) може зберігати багато "приладів управління" (InletDevice), та датчиків повітря (AirSensor) та температури (TempSensor).
+- "Приладів управління" (InletDevice) має зв'язки один-до-одного з датчиками повітря (AirSensor) та температури (TempSensor).
+
+6 СПЕЦИФІКАЦІЯ REST
+
+Метод	Маршрут		Призначення
+POST	/api/admin/devices	Реєстрація нового пристрою або датчику.
+GET	/api/admin/devices/inlet	Отримання списку пристроїв для контролю вікон, дверей або вентиляції.
+GET	/api/admin/devices/air	Отримання списку датчиків повітря.
+GET	/api/admin/devices/temp	Отримання списку датчиків температури.
+PUT	/api/admin/devices/block	Блокування пристрою або датчика.
+DELETE	/api/admin/devices/{deviceId}	Видалення пристрою або датчика.
+POST	/api/admin/users/{username}/send-email	Відправлення електронного листа користувачеві.
+PUT	/api/admin/users/{username}/rights	Зміна прав адміністрування користувача.
+DELETE	/api/admin/users/{username}	Видалення користувача.
+POST	/api/devices	Додавання пристрою або датчику до групи.
+GET	/api/devices/inlet/by-group/{groupName}	Отримання списку «пристроїв управління» в групі.
+GET	/api/devices/air/by-group/{groupName}	Отримання списку датчиків повітря в групі.
+GET	/api/devices/temp/by-group/{groupName}	Отримання списку датчиків температури в групі.
+PUT	/api/devices/{deviceId}	Перейменування пристрою.
+DELETE	/api/devices/{deviceId}	Видалення пристрою з групи.
+PUT	/api/devices/inlet/{deviceId}/control-type/manual	Змінити тип контролю «пристрою управління» на ручний.
+PUT	/api/devices/inlet/{deviceId}/control-type/air	Зробити контроль «пристрою управління» залежним від обраного датчику повітря.
+PUT	/api/devices/inlet/{deviceId}/control-type/temp	Зробити контроль «пристрою управління» залежним від обраного датчику температури.
+PUT	/api/devices/inlet/{deviceId}/air-sensor	Змінити датчик повітря для «пристрою управління».
+PUT	/api/devices/inlet/{deviceId}/temp-sensor	Змінити датчик температури для «пристрою управління».
+PUT	/api/devices/inlet/{deviceId}/open	Відкрити або закрити «пристрій управління».
+PUT	/api/devices/air/{sensorId}/limits	Встановити обмеження показників датчика повітря для закриття та відкриття «пристрою управління».
+PUT	/api/devices/temp/{sensorId}/limits	Встановити обмеження показників датчика температури для закриття та відкриття «пристрою управління».
+POST	/api/groups	Створити групу.
+GET	/api/groups	Показати список існуючих груп.
+GET	/api/groups/{groupName}/info	Вивести інформацію про групу.
+PUT	/api/groups/{groupName}/info	Змінити інформацію про групу.
+POST	/api/groups/{groupName}/send-join-offer	Відправи запрошення від групи.
+POST	/api/groups/{groupName}/accept-join-offer/{offerId}	Підтвердити запит на вступ до групи від користувача.
+GET	/api/groups/{groupName}/sent-join-offers	Показати відправлені запрошення від групи.
+GET	/api/groups/{groupName}/received-join-offers	Показати запити на приєднання до групи.
+DELETE	/api/groups/{groupName}/cancel-join-offer/{offerId}	Відхилення запиту або запрошення.
+GET	/api/groups/{groupName}/members	Показати список учасників групи.
+PUT	/api/groups/{groupName}/member/{memberId}	Змінити права учасника групи.
+DELETE	/api/groups/{groupName}/member/{memberId}	Видалити учасника групи.
+DELETE	/api/groups/{groupName}	Видалити групу або покинути її, передавши права власника іншому.
+GET	/api/iot/inlet/{deviceId}/try	Запит від «пристрою управління» на отримання інформації.
+GET	/api/iot/air/{sensorId}/try	Відправка показників датчика повітря.
+GET	/api/iot/temp/{sensorId}/try	Відправка показників датчика температури.
+POST	/api/users/sign-up	Зареєструватися.
+POST	/api/users/sign-in	Авторизуватися.
+GET	/api/users/sign-out	Вийти.
+GET	/api/users/check	Перевірка на авторизацію.
+GET	/api/users	Отримати список користувачів.
+DELETE	/api/users	Видалити свій акаунт.
+GET	/api/users/info	Отримати дані про свій акаунт.
+PUT	/api/users/info	Змінити дані акаунта.
+GET	/api/users/{username}/info	Отримати дані іншого користувача.
+PUT	/api/users/password	Змінити пароль.
+PUT	/api/users/email	Змінити адресу електронної пошти.
+POST	/api/users/reset-password-permission	Отримати дозвіл на перезапис паролю за адресою електронної пошти.
+PUT	/api/users/reset-password	Перезаписати пароль.
+GET	/api/users/confirm-email/{email}	Підтвердження дії через електронну пошту.
+POST	/api/users/send-join-offer	Відправити запит на вступ до групи.
+POST	/api/users/accept-join-offer/{offerId}	Підтвердити запрошення на вступ до групи.
+GET	/api/users/sent-join-offers	Відправлені запити на вступ до груп.
+GET	/api/users/received-join-offers	Отримані запрошення від груп.
+DELETE	/api/users/cancel-join-offer/{offerId}	Відхилення запиту або запрошення.
+
+7 ПОБУДОВА ДІАГРАМИ ПАКЕТІВ
+
+На діаграмі пакетів (див. рис. 7.1) було зображено пакетну структуру програмної системи.
+Для реалізації системи, в першу чергу було імпортовано додаткові пакети та бібліотеки, які пов'язані зі створенням шаблону на платформі ASP.NET Core та прив'язки СУБД Microsoft SQL Server з Entity Framework Core, і, відповідно із моделями з пакету SmartInlet.Server.Models. Entity Framework Core також займається створенням міграцій для бази даних.
+В свою чергу, в SmartInlet.Server.Models вкзуються моделі, що характеризують таблиці у базі даних і в них вказується більшість обмежень та характеристик для їх колонок.
+В пакеті SmartInlet.Server.Services находяться біліотеки для взємодії з зовнішніми сервісами. Пакет містить сервіс для взаємодії з БД через ORM Entity Framework Core та сервіс для відправки електроних листів.
+Зберіганням класів, що містять інструменти для вирішення невеликих задач, займається пакет SmartInlet.Server.Tools. До нього відноситься клас для хешування та перевірки хешованих паролів і Клас з функцією генерації випадкових строк для створення коду доступу для корисувача.
+Пакет SmartInlet.Server.Controllers містить в собі контроллери, які відповідають за маршрутизацію та обробку HTTP-запитів від клієнта та IoT пристроїв. В цих контролерах використовуються різні сервіси та інструменти для роботи з базою даних, авторизацію, хешуванням, та відпрвавкою електронних листів.
+Також контроллери використовують класи із таких пакетів, як SmartInlet.Server.Requests та SmartInlet.Server.Responses, де SmartInlet.Server.Requests - пакет, що зберігає класи, які являють собою тіла для збереження даних з HTTP-запитів з хедера, тіла або URL параметрів. Щодо SmartInlet.Server.Responses - він зберігає класи-тіла, що використовуються для відправки даних до клієнта після обробки запиту.
+Для перевірки доступу користувача до певних маршрутів в контролерах було розроблено атрибути авторизації, що зберігаються в пакеті SmartInlet.Server.Attributes. Ці атрибути використувуються для перевірки на авторизацію користувача, або на наявність прав на адміністрування, і якщо користувач не пройде перевіру, тоді запит буде відхилено сервером, де використовується відповідний атрибут.
+
+ВИСНОВКИ
+
+В результаті виконання лабораторної роботи була розроблена та протестована серверна частина програмної системи і були розроблені діаграми для кращого розуміння предметної області та архітектури системи.
+Посилання на відеоролик, який демонструє структуру проекту та основні функції системи: https://www.youtube.com/watch?v=eeuFDqoQePQ
+
+ДОДАТОК А
+Програмний код запуску серверної частини системи
+
+1. using Microsoft.AspNetCore.Authentication.Cookies;
+2. using Microsoft.EntityFrameworkCore;
+3. using SmartInlet.Server.Services.DB;
+4. using SmartInlet.Server.Services.Email;
+5. 
+6. namespace SmartInlet.Server
+7. {
+8.     public class Program
+9.     {
+10.         public static void Main(string[] args)
+11.         {
+12.             var builder = WebApplication.CreateBuilder(args);
+13. 
+14.             builder.Services.AddDbContext<DbApp>(options =>
+15.             {
+16.                 options.UseSqlServer(builder.Configuration["EF:ConnectionString"]);
+17.             });
+18. 
+19.             builder.Services.AddControllers();
+20.             builder.Services.AddEndpointsApiExplorer();
+21.             builder.Services.AddSwaggerGen();
+22.             builder.Services.AddCors();
+23. 
+24.             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+25.                 .AddCookie();
+26. 
+27.             builder.Services.AddEmailService(e =>
+28.             {
+29.                 e.Email = builder.Configuration["Email:EmailAddress"];
+30.                 e.SenderName = builder.Configuration["Email:SenderName"];
+31.                 e.Password = builder.Configuration["Email:Password"];
+32.                 e.Host = builder.Configuration["Email:Host"];
+33.                 e.Port = int.Parse(builder.Configuration["Email:Port"]);
+34.                 e.EmailTemplatesFolder = builder.Configuration["Email:EmailTemplatesFolder"];
+35.             });
+36. 
+37.             var app = builder.Build();
+38. 
+39.             using (var scope = app.Services.CreateScope())
+40.             {
+41.                 var db = scope.ServiceProvider.GetRequiredService<DbApp>();
+42. 
+43.                 if (!db.Database.CanConnect())
+44.                 {
+45.                     throw new NotImplementedException("Can not connect to the DB!");
+46.                 }
+47.             }
+48. 
+49.             app.UseDefaultFiles();
+50.             app.UseStaticFiles();
+51. 
+52.             if (app.Environment.IsDevelopment())
+53.             {
+54.                 app.UseSwagger();
+55.                 app.UseSwaggerUI();
+56.             }
+57. 
+58.             app.UseHttpsRedirection();
+59.             app.UseAuthorization();
+60.             app.UseAuthentication();
+61.             app.UseCors(builder =>
+62.                 builder.AllowCredentials().AllowAnyHeader().AllowAnyMethod().WithOrigins(
+63.                     "https://localhost:5173"
+64.                 ));
+65. 
+66.             app.MapControllers();
+67.             app.MapFallbackToFile("/index.html");
+68. 
+69.             app.Run();
+70.         }
+71.     }
+72. }
+
+ДОДАТОК Б
+Програмний код сервісу для відправлення електронних повідомлень
+
+1. using Microsoft.Extensions.Options;
+2. using System.Net;
+3. using System.Net.Mail;
+4. using System.Text.RegularExpressions;
+5. 
+6. namespace SmartInlet.Server.Services.Email
+7. {
+8. 	public class EmailService : IEmailService
+9. 	{
+10. 		private readonly EmailServiceConfigurationMetadata configuration;
+11. 
+12. 		private string EmailTemplatesFolder =>
+13. 			Path.IsPathRooted(configuration.EmailTemplatesFolder) ?
+14. 			configuration.EmailTemplatesFolder :
+15. 			Path.Combine(
+16. 				Directory.GetCurrentDirectory(),
+17. 				configuration.EmailTemplatesFolder);
+18. 
+19. 		public EmailService(IOptions<EmailServiceConfigurationMetadata> configuration)
+20. 		{
+21. 			this.configuration = configuration.Value;
+22. 		}
+23. 
+24. 		public async Task SendEmailAsync(
+25. 			string email,
+26. 			string subject,
+27. 			string message,
+28. 			bool isHtml = false)
+29. 		{
+30.             using SmtpClient client = Connect();
+31.             using MailMessage mailMessage = new(
+32. 				configuration.Email,
+33. 				email,
+34. 				subject,
+35. 				message);
+36. 
+37.             mailMessage.IsBodyHtml = isHtml;
+38.             await client.SendMailAsync(mailMessage);
+39.         }
+40. 
+41. 		public async Task SendEmailUseTemplateAsync(
+42. 			string email,
+43. 			string templateName,
+44. 			Dictionary<string, string>? parameters = null, string? subject = null)
+45. 		{
+46. 			string templatePath = Path.Combine(EmailTemplatesFolder, templateName);
+47. 			if (!File.Exists(templatePath))
+48. 			{
+49. 				throw new FileNotFoundException(
+50. 					$"Template {templateName} not found");
+51. 			}
+52. 
+53. 			string template = File.ReadAllText(templatePath);
+54. 			if (parameters != null)
+55. 			{
+56. 				foreach (var parameter in parameters)
+57. 				{
+58. 					template = template.Replace(
+59. 						$@"{{{{{parameter.Key}}}}}",
+60. 						parameter.Value);
+61. 				}
+62. 			}
+63. 
+64. 			subject ??= Regex.Match(
+65. 				template,
+66. 				@"<meta name=""subject"" content=""(.*)""").Groups[1].Value;
+67. 
+68. 			await SendEmailAsync(email, subject, template, true);
+69. 		}
+70. 
+71. 		private SmtpClient Connect()
+72. 		{
+73.             SmtpClient smtpClient = new()
+74.             {
+75.                 Host = configuration.Host,
+76.                 Port = configuration.Port,
+77.                 EnableSsl = configuration.UseSSL,
+78.                 DeliveryMethod = SmtpDeliveryMethod.Network,
+79.                 UseDefaultCredentials = configuration.UseDefaultCredentials,
+80.                 Credentials = new NetworkCredential(
+81. 					configuration.Email,
+82. 					configuration.Password)
+83.             };
+84.             return smtpClient;
+85. 		}
+86. 	}
+87. }
+
+ДОДАТОК В
+Програмний код ORM класу для роботи з базою даних
+
+1. using Microsoft.EntityFrameworkCore;
+2. using SmartInlet.Server.Models;
+3. 
+4. namespace SmartInlet.Server.Services.DB
+5. {
+6.     /// <summary>
+7.     /// ORM class to manage the database.
+8.     /// </summary>
+9.     public class DbApp : DbContext
+10.     {
+11.         public DbSet<ActivationCode> ActivationCodes { get; set; }
+12.         public DbSet<AirSensor> AirSensors { get; set; }
+13.         public DbSet<Group> Groups { get; set; }
+14.         public DbSet<GroupMember> GroupMembers { get; set; }
+15.         public DbSet<InletDevice> InletDevices { get; set; }
+16.         public DbSet<JoinOffer> JoinOffers { get; set; }
+17.         public DbSet<TempSensor> TempSensors { get; set; }
+18.         public DbSet<User> Users { get; set; }
+19. 
+20.         public DbApp(DbContextOptions<DbApp> options) : base(options) { }
+21. 
+22.         protected override void OnModelCreating(ModelBuilder modelBuilder)
+23.         {
+24.             // column properties
+25. 
+26.             modelBuilder.Entity<User>()
+27.                 .HasIndex(u => u.Username)
+28.                 .IsUnique();
+29. 
+30.             modelBuilder.Entity<User>()
+31.                 .HasIndex(u => u.Email)
+32.                 .IsUnique();
+33. 
+34.             modelBuilder.Entity<Group>()
+35.                 .HasIndex(o => o.Name)
+36.                 .IsUnique();
+37. 
+38.             // 1-to-1 relationships
+39. 
+40.             modelBuilder.Entity<InletDevice>()
+41.                 .HasOne(d => d.AirSensor)
+42.                 .WithOne(vk => vk.InletDevice)
+43.                 .HasForeignKey<AirSensor>(vk => vk.InletDeviceId)
+44.                 .OnDelete(DeleteBehavior.Restrict);
+45. 
+46.             modelBuilder.Entity<AirSensor>()
+47.                 .HasOne(vk => vk.InletDevice)
+48.                 .WithOne(d => d.AirSensor)
+49.                 .HasForeignKey<InletDevice>(d => d.AirSensorId)
+50.                 .OnDelete(DeleteBehavior.Restrict);
+51. 
+52.             modelBuilder.Entity<InletDevice>()
+53.                 .HasOne(d => d.TempSensor)
+54.                 .WithOne(vk => vk.InletDevice)
+55.                 .HasForeignKey<TempSensor>(vk => vk.InletDeviceId)
+56.                 .OnDelete(DeleteBehavior.Restrict);
+57. 
+58.             modelBuilder.Entity<TempSensor>()
+59.                 .HasOne(vk => vk.InletDevice)
+60.                 .WithOne(d => d.TempSensor)
+61.                 .HasForeignKey<InletDevice>(d => d.TempSensorId)
+62.                 .OnDelete(DeleteBehavior.Restrict);
+63. 
+64.             // 1-to-many relationships
+65. 
+66.             modelBuilder.Entity<User>()
+67.                 .HasMany(u => u.Groups)
+68.                 .WithOne(o => o.Owner)
+69.                 .HasForeignKey(o => o.OwnerId)
+70.                 .OnDelete(DeleteBehavior.Restrict);
+71. 
+72.             modelBuilder.Entity<User>()
+73.                 .HasMany(u => u.GroupMembers)
+74.                 .WithOne(om => om.User)
+75.                 .HasForeignKey(om => om.UserId)
+76.                 .OnDelete(DeleteBehavior.Restrict);
+77. 
+78.             modelBuilder.Entity<User>()
+79.                 .HasMany(u => u.ActivationCodes)
+80.                 .WithOne(ac => ac.User)
+81.                 .HasForeignKey(ac => ac.UserId)
+82.                 .OnDelete(DeleteBehavior.Cascade);
+83. 
+84.             modelBuilder.Entity<User>()
+85.                 .HasMany(o => o.JoinOffers)
+86.                 .WithOne(ic => ic.User)
+87.                 .HasForeignKey(ic => ic.UserId)
+88.                 .OnDelete(DeleteBehavior.Restrict);
+89. 
+90.             modelBuilder.Entity<Group>()
+91.                 .HasMany(g => g.GroupMembers)
+92.                 .WithOne(m => m.Group)
+93.                 .HasForeignKey(m => m.GroupId)
+94.                 .OnDelete(DeleteBehavior.Cascade);
+95. 
+96.             modelBuilder.Entity<Group>()
+97.                .HasMany(o => o.InletDevices)
+98.                .WithOne(d => d.Group)
+99.                .HasForeignKey(d => d.GroupId)
+100.                .OnDelete(DeleteBehavior.Restrict);
+101. 
+102.             modelBuilder.Entity<Group>()
+103.                .HasMany(o => o.AirSensors)
+104.                .WithOne(d => d.Group)
+105.                .HasForeignKey(d => d.GroupId)
+106.                .OnDelete(DeleteBehavior.Restrict);
+107. 
+108.             modelBuilder.Entity<Group>()
+109.                 .HasMany(o => o.JoinOffers)
+110.                 .WithOne(ic => ic.Group)
+111.                 .HasForeignKey(ic => ic.GroupId)
+112.                 .OnDelete(DeleteBehavior.Restrict);
+113. 
+114.             base.OnModelCreating(modelBuilder);
+115.         }
+116.     }
+117. }
+ 
+ДОДАТОК Г
+Програмний код класу з функціями для хешування та перевірки хешованих паролів
+
+1. using System.Security.Cryptography;
+2. 
+3. namespace SmartInlet.Server.Tools
+4. {
+5.     /// <summary>
+6.     /// Implements a tool for working with passwords.
+7.     /// </summary>
+8.     public static class PasswordTool
+9.     {
+10.         public const int SaltByteSize = 32;
+11.         public const int HashByteSize = 480;
+12.         public const int HashingIterationsCount = 10210;
+13. 
+14.         /// <summary>
+15.         /// Hashes a password by creating a password-based 
+16.         /// key derivation function (PBKDF2).
+17.         /// </summary>
+18.         /// <param name="password">The password to hash.</param>
+19.         /// <returns>The string that is the password-based key.</returns>
+20.         public static string Hash(string password)
+21.         {
+22.             byte[] salt;
+23.             new RNGCryptoServiceProvider()
+24.                 .GetBytes(salt = new byte[SaltByteSize]);
+25.             Rfc2898DeriveBytes? generator = new(
+26.                 password,
+27.                 salt,
+28.                 HashingIterationsCount);
+29.             byte[] hash = generator.GetBytes(HashByteSize);
+30.             byte[] hashBytes = new byte[HashByteSize + SaltByteSize];
+31. 
+32.             Array.Copy(salt, 0, hashBytes, 0, SaltByteSize);
+33.             Array.Copy(hash, 0, hashBytes, SaltByteSize, HashByteSize);
+34. 
+35.             return Convert.ToBase64String(hashBytes);
+36.         }
+37. 
+38.         /// <summary>
+39.         /// Checks if the two passwords match each 
+40.         /// other where the second one is hashed.
+41.         /// </summary>
+42.         /// <param name="password">Non hashed password.</param>
+43.         /// <param name="passwordHash">Hashed password.</param>
+44.         /// <returns>True if the password is valid. Otherwise false.</returns>
+45.         public static bool Validate(string password, string passwordHash)
+46.         {
+47.             try
+48.             {
+49.                 byte[] hashBytes = Convert.FromBase64String(passwordHash);
+50. 
+51.                 byte[] salt = new byte[SaltByteSize];
+52.                 Array.Copy(hashBytes, 0, salt, 0, SaltByteSize);
+53. 
+54.                 Rfc2898DeriveBytes? generator = new(
+55.                     password,
+56.                     salt,
+57.                     HashingIterationsCount);
+58.                 byte[] hash = generator.GetBytes(HashByteSize);
+59. 
+60.                 for (int i = 0; i < HashByteSize; i++)
+61.                 {
+62.                     if (hashBytes[i + SaltByteSize] != hash[i])
+63.                     {
+64.                         return false;
+65.                     }
+66.                 }
+67.             }
+68.             catch
+69.             {
+70.                 return false;
+71.             }
+72. 
+73.             return true;
+74.         }
+75.     }
+76. }
+ 
+ДОДАТОК Д
+Програмний код контролеру для роботи з пристроями та датчиками
+
+1. using Microsoft.AspNetCore.Mvc;
+2. using Microsoft.EntityFrameworkCore;
+3. using SmartInlet.Server.Attributes;
+4. using SmartInlet.Server.Models;
+5. using SmartInlet.Server.Requests;
+6. using SmartInlet.Server.Responses;
+7. using SmartInlet.Server.Services.DB;
+8. using SmartInlet.Server.Tools;
+9. using System.ComponentModel.DataAnnotations;
+10. using System.Net;
+11. 
+12. namespace SmartInlet.Server.Controllers
+13. {
+14.     [ApiController]
+15.     [Route("api/devices")]
+16.     public class DeviceController : BaseController
+17.     {
+18.         public DeviceController(DbApp db) : base(db) { }
+19. 
+20.         [Authorized]
+21.         [HttpPost]
+22.         public async Task<IActionResult> AddDeviceToGroup(
+23.             [FromBody] AccessDeviceRequest request)
+24.         {
+25.             Group? group = await DB.Groups
+26.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+27. 
+28.             if (group == null)
+29.             {
+30.                 return NotFound(new BaseResponse.ErrorResponse(
+31.                     "Group not found."));
+32.             }
+33. 
+34.             GroupMember? member = await DB.GroupMembers
+35.                 .SingleOrDefaultAsync(p => 
+36.                 p.GroupId == group.Id &&
+37.                 p.UserId == AuthorizedUserId);
+38. 
+39.             if (member == null)
+40.             {
+41.                 return NotFound(new BaseResponse.ErrorResponse(
+42.                     "You are not a member of the group!"));
+43.             }
+44. 
+45.             if (!member.CanEditDevices)
+46.             {
+47.                 return NotFound(new BaseResponse.ErrorResponse(
+48.                     "You are not allowed to add devices!"));
+49.             }
+50. 
+51.             switch (request.DeviceType)
+52.             {
+53.                 case "inlet":
+54.                     InletDevice? device = await DB.InletDevices
+55.                         .SingleOrDefaultAsync(p => p.Id == request.DeviceId);
+56. 
+57.                     if (device == null)
+58.                     {
+59.                         return NotFound(new BaseResponse.ErrorResponse(
+60.                             "Device not found."));
+61.                     }
+62. 
+63.                     if (device.IsBlocked)
+64.                     {
+65.                         return BadRequest(new BaseResponse.ErrorResponse(
+66.                             "Device is blocked."));
+67.                     }
+68. 
+69.                     if (!PasswordTool.Validate(request.AccessCode, device.AccessCode))
+70.                     {
+71.                         return BadRequest(new BaseResponse.ErrorResponse(
+72.                             "Invalid access code."));
+73.                     }
+74. 
+75.                     device.GroupId = group.Id;
+76.                     device.Group = group;
+77.                     break;
+78.                 case "air":
+79.                     AirSensor? airSensor = await DB.AirSensors
+80.                         .SingleOrDefaultAsync(p => p.Id == request.DeviceId);
+81. 
+82.                     if (airSensor == null)
+83.                     {
+84.                         return NotFound(new BaseResponse.ErrorResponse(
+85.                             "Device not found."));
+86.                     }
+87. 
+88.                     if (airSensor.IsBlocked)
+89.                     {
+90.                         return BadRequest(new BaseResponse.ErrorResponse(
+91.                             "Device is blocked."));
+92.                     }
+93. 
+94.                     if (!PasswordTool.Validate(request.AccessCode, airSensor.AccessCode))
+95.                     {
+96.                         return BadRequest(new BaseResponse.ErrorResponse(
+97.                             "Invalid access code."));
+98.                     }
+99. 
+100.                     airSensor.GroupId = group.Id;
+101.                     airSensor.Group = group;
+102.                     break;
+103.                 case "temp":
+104.                     TempSensor? tempSensor = await DB.TempSensors
+105.                         .SingleOrDefaultAsync(p => p.Id == request.DeviceId);
+106. 
+107.                     if (tempSensor == null)
+108.                     {
+109.                         return NotFound(new BaseResponse.ErrorResponse(
+110.                             "Device not found."));
+111.                     }
+112. 
+113.                     if (tempSensor.IsBlocked)
+114.                     {
+115.                         return BadRequest(new BaseResponse.ErrorResponse(
+116.                             "Device is blocked."));
+117.                     }
+118. 
+119.                     if (!PasswordTool.Validate(request.AccessCode, tempSensor.AccessCode))
+120.                     {
+121.                         return BadRequest(new BaseResponse.ErrorResponse(
+122.                             "Invalid access code."));
+123.                     }
+124. 
+125.                     tempSensor.GroupId = group.Id;
+126.                     tempSensor.Group = group;
+127.                     break;
+128.                 default:
+129.                     return BadRequest(new BaseResponse.ErrorResponse(
+130.                         "Unknown device type."));
+131.             }
+132. 
+133.             await DB.SaveChangesAsync();
+134.             return Ok(new BaseResponse.SuccessResponse("Device added!"));
+135.         }
+136. 
+137.         [Authorized]
+138.         [HttpGet("inlet/by-group/{groupName}")]
+139.         public async Task<IActionResult> GetInletDevices(
+140.             [FromRoute] string groupName,
+141.             [FromQuery] PageRequest pageRequest,
+142.             [FromQuery] SearchDevicesRequest request)
+143.         {
+144.             Group? group = await DB.Groups
+145.                 .SingleOrDefaultAsync(p => p.Name == WebUtility.UrlDecode(groupName));
+146. 
+147.             if (group == null)
+148.             {
+149.                 return NotFound(new BaseResponse.ErrorResponse("Group not found!"));
+150.             }
+151. 
+152.             GroupMember? ownMember = await DB.GroupMembers
+153.                 .SingleOrDefaultAsync(p => p.GroupId == group.Id && p.UserId == AuthorizedUserId);
+154. 
+155.             if (ownMember == null)
+156.             {
+157.                 return NotFound(new BaseResponse.ErrorResponse("You are not a member of the group!"));
+158.             }
+159. 
+160.             request.Query = (request.Query ?? "").ToLower();
+161.             IQueryable<InletDevice> query = DB.InletDevices
+162.                 .Include(p => p.Group)
+163.                 .Where(p => p.Group.Name == group.Name && p.Name.ToLower().Contains(request.Query))
+164.                 .OrderBy(p => p.Group!.Name);
+165. 
+166.             int totalItemsCount = await query.CountAsync();
+167.             int totalPagesCount = (int)Math.Ceiling((double)totalItemsCount / pageRequest.PageSize);
+168.             query = query.Skip((pageRequest.Page - 1) * pageRequest.PageSize).Take(pageRequest.PageSize);
+169.             List<InletDeviceResponse.View> result = await query
+170.                 .Select(p => new InletDeviceResponse.View(p))
+171.                 .ToListAsync();
+172. 
+173.             PageResponse<InletDeviceResponse.View> response = new(
+174.                 result,
+175.                 pageRequest.Page,
+176.                 pageRequest.PageSize,
+177.                 totalPagesCount);
+178. 
+179.             return Ok(response);
+180.         }
+181. 
+182.         [Authorized]
+183.         [HttpGet("air/by-group/{groupName}")]
+184.         public async Task<IActionResult> GetAirSensors(
+185.             [FromRoute] string groupName,
+186.             [FromQuery] PageRequest pageRequest,
+187.             [FromQuery] SearchDevicesRequest request)
+188.         {
+189.             Group? group = await DB.Groups
+190.                 .SingleOrDefaultAsync(p => p.Name == WebUtility.UrlDecode(groupName));
+191. 
+192.             if (group == null)
+193.             {
+194.                 return NotFound(new BaseResponse.ErrorResponse("Group not found!"));
+195.             }
+196. 
+197.             GroupMember? ownMember = await DB.GroupMembers
+198.                 .SingleOrDefaultAsync(p => p.GroupId == group.Id && p.UserId == AuthorizedUserId);
+199. 
+200.             if (ownMember == null)
+201.             {
+202.                 return NotFound(new BaseResponse.ErrorResponse("You are not a member of the group!"));
+203.             }
+204. 
+205.             request.Query = (request.Query ?? "").ToLower();
+206.             IQueryable<AirSensor> query = DB.AirSensors
+207.                 .Include(p => p.Group)
+208.                 .Where(p => p.Group.Name == group.Name && p.Name.ToLower().Contains(request.Query))
+209.                 .OrderBy(p => p.Group!.Name);
+210. 
+211.             int totalItemsCount = await query.CountAsync();
+212.             int totalPagesCount = (int)Math.Ceiling((double)totalItemsCount / pageRequest.PageSize);
+213.             query = query.Skip((pageRequest.Page - 1) * pageRequest.PageSize).Take(pageRequest.PageSize);
+214.             List<AirSensorResponse.View> result = await query
+215.                 .Select(p => new AirSensorResponse.View(p))
+216.                 .ToListAsync();
+217. 
+218.             PageResponse<AirSensorResponse.View> response = new(
+219.                 result,
+220.                 pageRequest.Page,
+221.                 pageRequest.PageSize,
+222.                 totalPagesCount);
+223. 
+224.             return Ok(response);
+225.         }
+226. 
+227.         [Authorized]
+228.         [HttpGet("temp/by-group/{groupName}")]
+229.         public async Task<IActionResult> GetTempSensors(
+230.             [FromRoute] string groupName,
+231.             [FromQuery] PageRequest pageRequest,
+232.             [FromQuery] SearchDevicesRequest request)
+233.         {
+234.             Group? group = await DB.Groups
+235.                 .SingleOrDefaultAsync(p => p.Name == WebUtility.UrlDecode(groupName));
+236. 
+237.             if (group == null)
+238.             {
+239.                 return NotFound(new BaseResponse.ErrorResponse("Group not found!"));
+240.             }
+241. 
+242.             GroupMember? ownMember = await DB.GroupMembers
+243.                 .SingleOrDefaultAsync(p => p.GroupId == group.Id && p.UserId == AuthorizedUserId);
+244. 
+245.             if (ownMember == null)
+246.             {
+247.                 return NotFound(new BaseResponse.ErrorResponse("You are not a member of the group!"));
+248.             }
+249. 
+250.             request.Query = (request.Query ?? "").ToLower();
+251.             IQueryable<TempSensor> query = DB.TempSensors
+252.                 .Include(p => p.Group)
+253.                 .Where(p => p.Group.Name == group.Name && p.Name.ToLower().Contains(request.Query))
+254.                 .OrderBy(p => p.Group!.Name);
+255. 
+256.             int totalItemsCount = await query.CountAsync();
+257.             int totalPagesCount = (int)Math.Ceiling((double)totalItemsCount / pageRequest.PageSize);
+258.             query = query.Skip((pageRequest.Page - 1) * pageRequest.PageSize).Take(pageRequest.PageSize);
+259.             List<TempSensorResponse.View> result = await query
+260.                 .Select(p => new TempSensorResponse.View(p))
+261.                 .ToListAsync();
+262. 
+263.             PageResponse<TempSensorResponse.View> response = new(
+264.                 result,
+265.                 pageRequest.Page,
+266.                 pageRequest.PageSize,
+267.                 totalPagesCount);
+268. 
+269.             return Ok(response);
+270.         }
+271. 
+272.         [Authorized]
+273.         [HttpPut("{deviceId}")]
+274.         public async Task<IActionResult> RenameDevice(
+275.             [FromRoute] int deviceId,
+276.             [FromBody] RenameDeviceRequest request)
+277.         {
+278.             Group? group = await DB.Groups
+279.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+280. 
+281.             if (group == null)
+282.             {
+283.                 return NotFound(new BaseResponse.ErrorResponse(
+284.                     "Group not found."));
+285.             }
+286. 
+287.             GroupMember? member = await DB.GroupMembers
+288.                 .SingleOrDefaultAsync(
+289.                 p => p.GroupId == group.Id &&
+290.                 p.UserId == AuthorizedUserId);
+291. 
+292.             if (member == null)
+293.             {
+294.                 return NotFound(new BaseResponse.ErrorResponse(
+295.                     "You are not a member of the group!"));
+296.             }
+297. 
+298.             if (!member.CanEditDevices)
+299.             {
+300.                 return NotFound(new BaseResponse.ErrorResponse(
+301.                     "You are not allowed to rename devices!"));
+302.             }
+303. 
+304.             switch (request.DeviceType)
+305.             {
+306.                 case "inlet":
+307.                     InletDevice? device = await DB.InletDevices
+308.                         .SingleOrDefaultAsync(
+309.                         p => p.Id == deviceId &&
+310.                         p.GroupId == group.Id);
+311. 
+312.                     if (device == null)
+313.                     {
+314.                         return NotFound(new BaseResponse.ErrorResponse(
+315.                             "Device not found."));
+316.                     }
+317. 
+318.                     device.Name = request.DeviceName;
+319.                     break;
+320.                 case "air":
+321.                     AirSensor? airSensor = await DB.AirSensors
+322.                         .SingleOrDefaultAsync(
+323.                         p => p.Id == deviceId &&
+324.                         p.GroupId == group.Id);
+325. 
+326.                     if (airSensor == null)
+327.                     {
+328.                         return NotFound(new BaseResponse.ErrorResponse(
+329.                             "Device not found."));
+330.                     }
+331. 
+332.                     airSensor.Name = request.DeviceName;
+333.                     break;
+334.                 case "temp":
+335.                     TempSensor? tempSensor = await DB.TempSensors
+336.                         .SingleOrDefaultAsync(
+337.                         p => p.Id == deviceId
+338.                         && p.GroupId == group.Id);
+339. 
+340.                     if (tempSensor == null)
+341.                     {
+342.                         return NotFound(new BaseResponse.ErrorResponse(
+343.                             "Device not found."));
+344.                     }
+345. 
+346.                     tempSensor.Name = request.DeviceName;
+347.                     break;
+348.                 default:
+349.                     return BadRequest(new BaseResponse.ErrorResponse(
+350.                         "Unknown device type."));
+351.             }
+352. 
+353.             await DB.SaveChangesAsync();
+354.             return Ok(new BaseResponse.SuccessResponse(
+355.                 "Device renamed!"));
+356.         }
+357. 
+358.         [Authorized]
+359.         [HttpPut("inlet/{deviceId}/open")]
+360.         public async Task<IActionResult> OpenInletDevice(
+361.             [FromRoute] int deviceId,
+362.             [Required][FromBody] string groupName)
+363.         {
+364.             Group? group = await DB.Groups
+365.                 .SingleOrDefaultAsync(p => p.Name == groupName);
+366. 
+367.             if (group == null)
+368.             {
+369.                 return NotFound(new BaseResponse.ErrorResponse(
+370.                     "Group not found."));
+371.             }
+372. 
+373.             GroupMember? member = await DB.GroupMembers
+374.                 .SingleOrDefaultAsync(
+375.                 p => p.GroupId == group.Id &&
+376.                 p.UserId == AuthorizedUserId);
+377. 
+378.             if (member == null)
+379.             {
+380.                 return NotFound(new BaseResponse.ErrorResponse(
+381.                     "You are not a member of the group!"));
+382.             }
+383. 
+384.             if (!member.CanEditDevices)
+385.             {
+386.                 return NotFound(new BaseResponse.ErrorResponse(
+387.                     "You are not allowed to rename devices!"));
+388.             }
+389. 
+390.             InletDevice? device = await DB.InletDevices
+391.                 .SingleOrDefaultAsync(
+392.                 p => p.Id == deviceId &&
+393.                 p.GroupId == group.Id);
+394. 
+395.             if (device == null)
+396.             {
+397.                 return NotFound(new BaseResponse.ErrorResponse(
+398.                     "Device not found."));
+399.             }
+400. 
+401.             if (device.ControlType != "manual")
+402.             {
+403.                 return BadRequest(new BaseResponse.ErrorResponse(
+404.                     "Device is not controlled manually."));
+405.             }
+406. 
+407.             device.IsOpened = !device.IsOpened;
+408.             await DB.SaveChangesAsync();
+409.             return Ok(new BaseResponse.SuccessResponse(
+410.                 "Device opened!"));
+411.         }
+412. 
+413.         [Authorized]
+414.         [HttpPut("inlet/{deviceId}/control-type/manual")]
+415.         public async Task<IActionResult> ChangeDeviceControlTypeToManual(
+416.             [FromRoute] int deviceId,
+417.             [Required][FromBody] string groupName)
+418.         {
+419.             Group? group = await DB.Groups
+420.                 .SingleOrDefaultAsync(p => p.Name == groupName);
+421. 
+422.             if (group == null)
+423.             {
+424.                 return NotFound(new BaseResponse.ErrorResponse(
+425.                     "Group not found."));
+426.             }
+427. 
+428.             GroupMember? member = await DB.GroupMembers
+429.                 .SingleOrDefaultAsync(
+430.                 p => p.GroupId == group.Id &&
+431.                 p.UserId == AuthorizedUserId);
+432. 
+433.             if (member == null)
+434.             {
+435.                 return NotFound(new BaseResponse.ErrorResponse(
+436.                     "You are not a member of the group!"));
+437.             }
+438. 
+439.             if (!member.CanEditDevices)
+440.             {
+441.                 return NotFound(new BaseResponse.ErrorResponse(
+442.                     "You are not allowed to rename devices!"));
+443.             }
+444. 
+445.             InletDevice? device = await DB.InletDevices
+446.                 .Include(p => p.AirSensor)
+447.                 .SingleOrDefaultAsync(
+448.                 p => p.Id == deviceId &&
+449.                 p.GroupId == group.Id);
+450. 
+451.             if (device == null)
+452.             {
+453.                 return NotFound(new BaseResponse.ErrorResponse(
+454.                     "Device not found."));
+455.             }
+456. 
+457.             if (device.ControlType == "air")
+458.             {
+459.                 AirSensor? sensor = device.AirSensor;
+460.                 if (sensor != null)
+461.                 {
+462.                     sensor.InletDevice = null;
+463.                     sensor.InletDeviceId = null;
+464.                 }
+465. 
+466.                 device.AirSensor = null;
+467.                 device.AirSensorId = null;
+468.             } else if (device.ControlType == "temp")
+469.             {
+470.                 TempSensor? sensor = device.TempSensor;
+471.                 if (sensor != null)
+472.                 {
+473.                     sensor.InletDevice = null;
+474.                     sensor.InletDeviceId = null;
+475.                 }
+476. 
+477.                 device.TempSensor = null;
+478.                 device.TempSensorId = null;
+479.             }
+480. 
+481.             device.ControlType = "manual";
+482. 
+483.             await DB.SaveChangesAsync();
+484.             return Ok(new BaseResponse.SuccessResponse(
+485.                 "Device control type changed."));
+486.         }
+487. 
+488.         [Authorized]
+489.         [HttpPut("inlet/{deviceId}/control-type/air")]
+490.         public async Task<IActionResult> ChangeDeviceControlTypeToAir(
+491.             [FromRoute] int deviceId,
+492.             [FromBody] ChangeSensorRequest request)
+493.         {
+494.             Group? group = await DB.Groups
+495.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+496. 
+497.             if (group == null)
+498.             {
+499.                 return NotFound(new BaseResponse.ErrorResponse(
+500.                     "Group not found."));
+501.             }
+502. 
+503.             GroupMember? member = await DB.GroupMembers
+504.                 .SingleOrDefaultAsync(
+505.                 p => p.GroupId == group.Id &&
+506.                 p.UserId == AuthorizedUserId);
+507. 
+508.             if (member == null)
+509.             {
+510.                 return NotFound(new BaseResponse.ErrorResponse(
+511.                     "You are not a member of the group!"));
+512.             }
+513. 
+514.             if (!member.CanEditDevices)
+515.             {
+516.                 return NotFound(new BaseResponse.ErrorResponse(
+517.                     "You are not allowed to rename devices!"));
+518.             }
+519. 
+520.             InletDevice? device = await DB.InletDevices
+521.                         .SingleOrDefaultAsync(
+522.                 p => p.Id == deviceId &&
+523.                 p.GroupId == group.Id);
+524. 
+525.             if (device == null)
+526.             {
+527.                 return NotFound(new BaseResponse.ErrorResponse(
+528.                     "Device not found."));
+529.             }
+530. 
+531.             AirSensor? sensor = await DB.AirSensors
+532.                 .SingleOrDefaultAsync(
+533.                 p => p.Id == request.SensorId &&
+534.                 p.GroupId == group.Id);
+535. 
+536.             if (sensor == null)
+537.             {
+538.                 return NotFound(new BaseResponse.ErrorResponse(
+539.                     "Sensor not found."));
+540.             }
+541. 
+542.             if (device.ControlType == "temp")
+543.             {
+544.                 TempSensor? ts = device.TempSensor;
+545. 
+546.                 if (ts == null)
+547.                 {
+548.                     return NotFound(new BaseResponse.ErrorResponse(
+549.                         "Temperature sensor not found."));
+550.                 }
+551. 
+552.                 ts.InletDeviceId = null;
+553.                 ts.InletDevice = null;
+554.                 device.TempSensorId = null;
+555.                 device.TempSensor = null;
+556.             }
+557. 
+558.             sensor.InletDeviceId = device.Id;
+559.             sensor.InletDevice = device;
+560.             device.AirSensorId = sensor.Id;
+561.             device.AirSensor = sensor;
+562.             device.ControlType = "air";
+563. 
+564.             await DB.SaveChangesAsync();
+565.             return Ok(new BaseResponse.SuccessResponse(
+566.                 "Device control type changed."));
+567.         }
+568. 
+569.         [Authorized]
+570.         [HttpPut("inlet/{deviceId}/control-type/temp")]
+571.         public async Task<IActionResult> ChangeDeviceControlTypeToTemp(
+572.             [FromRoute] int deviceId,
+573.             [FromBody] ChangeSensorRequest request)
+574.         {
+575.             Group? group = await DB.Groups
+576.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+577. 
+578.             if (group == null)
+579.             {
+580.                 return NotFound(new BaseResponse.ErrorResponse(
+581.                     "Group not found."));
+582.             }
+583. 
+584.             GroupMember? member = await DB.GroupMembers
+585.                 .SingleOrDefaultAsync(
+586.                 p => p.GroupId == group.Id &&
+587.                 p.UserId == AuthorizedUserId);
+588. 
+589.             if (member == null)
+590.             {
+591.                 return NotFound(new BaseResponse.ErrorResponse(
+592.                     "You are not a member of the group!"));
+593.             }
+594. 
+595.             if (!member.CanEditDevices)
+596.             {
+597.                 return NotFound(new BaseResponse.ErrorResponse(
+598.                     "You are not allowed to rename devices!"));
+599.             }
+600. 
+601.             InletDevice? device = await DB.InletDevices
+602.                         .SingleOrDefaultAsync(
+603.                 p => p.Id == deviceId &&
+604.                 p.GroupId == group.Id);
+605. 
+606.             if (device == null)
+607.             {
+608.                 return NotFound(new BaseResponse.ErrorResponse(
+609.                     "Device not found."));
+610.             }
+611. 
+612.             TempSensor? sensor = await DB.TempSensors
+613.                 .SingleOrDefaultAsync(
+614.                 p => p.Id == request.SensorId &&
+615.                 p.GroupId == group.Id);
+616. 
+617.             if (sensor == null)
+618.             {
+619.                 return NotFound(new BaseResponse.ErrorResponse(
+620.                     "Sensor not found."));
+621.             }
+622. 
+623.             if (device.ControlType == "air")
+624.             {
+625.                 AirSensor? @as = device.AirSensor;
+626. 
+627.                 if (@as == null)
+628.                 {
+629.                     return NotFound(new BaseResponse.ErrorResponse(
+630.                         "Air sensor not found."));
+631.                 }
+632. 
+633.                 @as.InletDeviceId = null;
+634.                 @as.InletDevice = null;
+635.                 device.AirSensorId = null;
+636.                 device.AirSensor = null;
+637.             }
+638. 
+639.             sensor.InletDeviceId = device.Id;
+640.             sensor.InletDevice = device;
+641.             device.TempSensorId = sensor.Id;
+642.             device.TempSensor = sensor;
+643.             device.ControlType = "temp";
+644. 
+645.             await DB.SaveChangesAsync();
+646.             return Ok(new BaseResponse.SuccessResponse(
+647.                 "Device control type changed."));
+648.         }
+649. 
+650.         [Authorized]
+651.         [HttpPut("inlet/{deviceId}/air-sensor")]
+652.         public async Task<IActionResult> ChangeAirSensorForDevice(
+653.             [FromRoute] int deviceId,
+654.             [FromBody] ChangeSensorRequest request)
+655.         {
+656.             Group? group = await DB.Groups
+657.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+658. 
+659.             if (group == null)
+660.             {
+661.                 return NotFound(new BaseResponse.ErrorResponse(
+662.                     "Group not found."));
+663.             }
+664. 
+665.             GroupMember? member = await DB.GroupMembers
+666.                 .SingleOrDefaultAsync(
+667.                 p => p.GroupId == group.Id &&
+668.                 p.UserId == AuthorizedUserId);
+669. 
+670.             if (member == null)
+671.             {
+672.                 return NotFound(new BaseResponse.ErrorResponse(
+673.                     "You are not a member of the group!"));
+674.             }
+675. 
+676.             if (!member.CanEditDevices)
+677.             {
+678.                 return NotFound(new BaseResponse.ErrorResponse(
+679.                     "You are not allowed to rename devices!"));
+680.             }
+681. 
+682.             InletDevice? device = await DB.InletDevices
+683.                 .Include(p => p.AirSensor)
+684.                 .SingleOrDefaultAsync(
+685.                 p => p.Id == deviceId &&
+686.                 p.GroupId == group.Id);
+687. 
+688.             if (device == null)
+689.             {
+690.                 return NotFound(new BaseResponse.ErrorResponse(
+691.                     "Device not found."));
+692.             }
+693. 
+694.             if (device.ControlType != "air")
+695.             {
+696.                 return NotFound(new BaseResponse.ErrorResponse(
+697.                     "Device is not controlled by an air sensor."));
+698.             }
+699. 
+700.             AirSensor? oldSensor = device.AirSensor;
+701. 
+702.             if (oldSensor == null)
+703.             {
+704.                 return NotFound(new BaseResponse.ErrorResponse(
+705.                     "Old sensor not found."));
+706.             }
+707. 
+708.             AirSensor? sensor = await DB.AirSensors
+709.                 .SingleOrDefaultAsync(
+710.                 p => p.Id == request.SensorId &&
+711.                 p.GroupId == group.Id);
+712. 
+713.             if (sensor == null)
+714.             {
+715.                 return NotFound(new BaseResponse.ErrorResponse(
+716.                     "Sensor not found."));
+717.             }
+718. 
+719.             oldSensor.InletDeviceId = null;
+720.             oldSensor.InletDevice = null;
+721.             sensor.InletDeviceId = device.Id;
+722.             sensor.InletDevice = device;
+723.             device.AirSensorId = sensor.Id;
+724.             device.AirSensor = sensor;
+725. 
+726.             await DB.SaveChangesAsync();
+727.             return Ok(new BaseResponse.SuccessResponse(
+728.                 "Air sensor for the device is changed."));
+729.         }
+730. 
+731.         [Authorized]
+732.         [HttpPut("inlet/{deviceId}/temp-sensor")]
+733.         public async Task<IActionResult> ChangeTempSensorForDevice(
+734.             [FromRoute] int deviceId,
+735.             [FromBody] ChangeSensorRequest request)
+736.         {
+737.             Group? group = await DB.Groups
+738.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+739. 
+740.             if (group == null)
+741.             {
+742.                 return NotFound(new BaseResponse.ErrorResponse(
+743.                     "Group not found."));
+744.             }
+745. 
+746.             GroupMember? member = await DB.GroupMembers
+747.                 .SingleOrDefaultAsync(
+748.                 p => p.GroupId == group.Id &&
+749.                 p.UserId == AuthorizedUserId);
+750. 
+751.             if (member == null)
+752.             {
+753.                 return NotFound(new BaseResponse.ErrorResponse(
+754.                     "You are not a member of the group!"));
+755.             }
+756. 
+757.             if (!member.CanEditDevices)
+758.             {
+759.                 return NotFound(new BaseResponse.ErrorResponse(
+760.                     "You are not allowed to rename devices!"));
+761.             }
+762. 
+763.             InletDevice? device = await DB.InletDevices
+764.                 .Include(p => p.TempSensor)
+765.                 .SingleOrDefaultAsync(
+766.                 p => p.Id == deviceId &&
+767.                 p.GroupId == group.Id);
+768. 
+769.             if (device == null)
+770.             {
+771.                 return NotFound(new BaseResponse.ErrorResponse(
+772.                     "Device not found."));
+773.             }
+774. 
+775.             if (device.ControlType != "temp")
+776.             {
+777.                 return NotFound(new BaseResponse.ErrorResponse(
+778.                     "Device is not controlled by an temperature sensor."));
+779.             }
+780. 
+781.             TempSensor? oldSensor = device.TempSensor;
+782. 
+783.             if (oldSensor == null)
+784.             {
+785.                 return NotFound(new BaseResponse.ErrorResponse(
+786.                     "Old sensor not found."));
+787.             }
+788. 
+789.             TempSensor? sensor = await DB.TempSensors
+790.                 .SingleOrDefaultAsync(
+791.                 p => p.Id == request.SensorId &&
+792.                 p.GroupId == group.Id);
+793. 
+794.             if (sensor == null)
+795.             {
+796.                 return NotFound(new BaseResponse.ErrorResponse(
+797.                     "Sensor not found."));
+798.             }
+799. 
+800.             oldSensor.InletDeviceId = null;
+801.             oldSensor.InletDevice = null;
+802.             sensor.InletDeviceId = device.Id;
+803.             sensor.InletDevice = device;
+804.             device.TempSensorId = sensor.Id;
+805.             device.TempSensor = sensor;
+806. 
+807.             await DB.SaveChangesAsync();
+808.             return Ok(new BaseResponse.SuccessResponse(
+809.                 "Temperature sensor for the device is changed."));
+810.         }
+811. 
+812.         [Authorized]
+813.         [HttpPut("air/{sensorId}/limits")]
+814.         public async Task<IActionResult> ChangeAirSensorLimits(
+815.             [FromRoute] int sensorId,
+816.             [FromBody] ChangeSensorLimitsRequest request)
+817.         {
+818.             if (request.ToOpen <= request.ToClose)
+819.             {
+820.                 return BadRequest(new BaseResponse.ErrorResponse(
+821.                     "To-open limit must be higher than to-close one."));
+822.             }
+823. 
+824.             Group? group = await DB.Groups
+825.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+826. 
+827.             if (group == null)
+828.             {
+829.                 return NotFound(new BaseResponse.ErrorResponse(
+830.                     "Group not found."));
+831.             }
+832. 
+833.             GroupMember? member = await DB.GroupMembers
+834.                 .SingleOrDefaultAsync(
+835.                 p => p.GroupId == group.Id &&
+836.                 p.UserId == AuthorizedUserId);
+837. 
+838.             if (member == null)
+839.             {
+840.                 return NotFound(new BaseResponse.ErrorResponse(
+841.                     "You are not a member of the group!"));
+842.             }
+843. 
+844.             if (!member.CanEditDevices)
+845.             {
+846.                 return NotFound(new BaseResponse.ErrorResponse(
+847.                     "You are not allowed to rename devices!"));
+848.             }
+849. 
+850.             AirSensor? sensor = await DB.AirSensors
+851.                 .SingleOrDefaultAsync(
+852.                 p => p.Id == sensorId &&
+853.                 p.GroupId == group.Id);
+854. 
+855.             if (sensor == null)
+856.             {
+857.                 return NotFound(new BaseResponse.ErrorResponse(
+858.                     "Sensor not found."));
+859.             }
+860. 
+861.             sensor.AqiLimitToOpen = request.ToOpen;
+862.             sensor.AqiLimitToClose = request.ToClose;
+863. 
+864.             await DB.SaveChangesAsync();
+865.             return Ok(new AirSensorResponse(sensor));
+866.         }
+867. 
+868.         [Authorized]
+869.         [HttpPut("temp/{sensorId}/limits")]
+870.         public async Task<IActionResult> ChangeTempSensorLimits(
+871.             [FromRoute] int sensorId,
+872.             [FromBody] ChangeSensorLimitsRequest request)
+873.         {
+874.             if (request.ToOpen <= request.ToClose)
+875.             {
+876.                 return BadRequest(new BaseResponse.ErrorResponse(
+877.                     "To-open limit must be higher than to-close one."));
+878.             }
+879. 
+880.             Group? group = await DB.Groups
+881.                 .SingleOrDefaultAsync(p => p.Name == request.GroupName);
+882. 
+883.             if (group == null)
+884.             {
+885.                 return NotFound(new BaseResponse.ErrorResponse(
+886.                     "Group not found."));
+887.             }
+888. 
+889.             GroupMember? member = await DB.GroupMembers
+890.                 .SingleOrDefaultAsync(
+891.                 p => p.GroupId == group.Id &&
+892.                 p.UserId == AuthorizedUserId);
+893. 
+894.             if (member == null)
+895.             {
+896.                 return NotFound(new BaseResponse.ErrorResponse(
+897.                     "You are not a member of the group!"));
+898.             }
+899. 
+900.             if (!member.CanEditDevices)
+901.             {
+902.                 return NotFound(new BaseResponse.ErrorResponse(
+903.                     "You are not allowed to rename devices!"));
+904.             }
+905. 
+906.             TempSensor? sensor = await DB.TempSensors
+907.                 .SingleOrDefaultAsync(
+908.                 p => p.Id == sensorId &&
+909.                 p.GroupId == group.Id);
+910. 
+911.             if (sensor == null)
+912.             {
+913.                 return NotFound(new BaseResponse.ErrorResponse(
+914.                     "Sensor not found."));
+915.             }
+916. 
+917.             sensor.KelvinLimitToOpen = request.ToOpen;
+918.             sensor.KelvinLimitToClose = request.ToClose;
+919. 
+920.             await DB.SaveChangesAsync();
+921.             return Ok(new TempSensorResponse(sensor));
+922.         }
+923. 
+924.         [Authorized]
+925.         [HttpDelete("{deviceId}")]
+926.         public async Task<IActionResult> DeleteDevice(
+927.             [FromRoute] int deviceId,
+928.             [FromQuery] string groupName,
+929.             [FromQuery] string deviceType)
+930.         {
+931.             Group? group = await DB.Groups
+932.                 .SingleOrDefaultAsync(
+933.                 p => p.Name == WebUtility.UrlEncode(groupName));
+934. 
+935.             if (group == null)
+936.             {
+937.                 return NotFound(new BaseResponse.ErrorResponse(
+938.                     "Group not found."));
+939.             }
+940. 
+941.             GroupMember? member = await DB.GroupMembers
+942.                 .SingleOrDefaultAsync(
+943.                 p => p.GroupId == group.Id &&
+944.                 p.UserId == AuthorizedUserId);
+945. 
+946.             if (member == null)
+947.             {
+948.                 return NotFound(new BaseResponse.ErrorResponse(
+949.                     "You are not a member of the group!"));
+950.             }
+951. 
+952.             if (!member.CanEditDevices)
+953.             {
+954.                 return NotFound(new BaseResponse.ErrorResponse(
+955.                     "You are not allowed to rename devices!"));
+956.             }
+957. 
+958.             switch (deviceType)
+959.             {
+960.                 case "inlet":
+961.                     InletDevice? device = await DB.InletDevices
+962.                         .SingleOrDefaultAsync(
+963.                         p => p.Id == deviceId &&
+964.                         p.GroupId == group.Id);
+965. 
+966.                     if (device == null)
+967.                     {
+968.                         return NotFound(new BaseResponse.ErrorResponse(
+969.                             "Device not found."));
+970.                     }
+971. 
+972.                     device.GroupId = null;
+973.                     device.Group = null;
+974.                     device.AirSensorId = null;
+975.                     device.AirSensor = null;
+976.                     device.TempSensorId = null;
+977.                     device.TempSensor = null;
+978.                     device.ControlType = "manual";
+979.                     break;
+980.                 case "air":
+981.                     AirSensor? airSensor = await DB.AirSensors
+982.                         .SingleOrDefaultAsync(
+983.                         p => p.Id == deviceId &&
+984.                         p.GroupId == group.Id);
+985. 
+986.                     if (airSensor == null)
+987.                     {
+988.                         return NotFound(new BaseResponse.ErrorResponse(
+989.                             "Device not found."));
+990.                     }
+991. 
+992.                     airSensor.GroupId = null;
+993.                     airSensor.Group = null;
+994.                     airSensor.InletDeviceId = null;
+995.                     airSensor.InletDevice = null;
+996.                     break;
+997.                 case "temp":
+998.                     TempSensor? tempSensor = await DB.TempSensors
+999.                         .SingleOrDefaultAsync(
+1000.                         p => p.Id == deviceId &&
+1001.                         p.GroupId == group.Id);
+1002. 
+1003.                     if (tempSensor == null)
+1004.                     {
+1005.                         return NotFound(new BaseResponse.ErrorResponse(
+1006.                             "Device not found."));
+1007.                     }
+1008. 
+1009.                     tempSensor.GroupId = null;
+1010.                     tempSensor.Group = null;
+1011.                     tempSensor.InletDeviceId = null;
+1012.                     tempSensor.InletDevice = null;
+1013.                     break;
+1014.                 default:
+1015.                     return BadRequest(new BaseResponse.ErrorResponse(
+1016.                         "Unknown device type."));
+1017.             }
+1018. 
+1019.             await DB.SaveChangesAsync();
+1020.             return Ok(new BaseResponse.SuccessResponse("Device renamed!"));
+1021.         }
+1022.     }
+1023. }
